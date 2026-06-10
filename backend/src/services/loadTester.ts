@@ -1,6 +1,3 @@
-// function loadTest(url : string , concurrency : number , duration : number) {
-//     for (int i = 0 ; i < )
-// }
 import axios from "axios"
 
 interface testResult {
@@ -52,14 +49,31 @@ async function loadInitiator(url : string ,  concurrent : number , duration : nu
                                                 //   Promise<pending>,
                                                 //   Promise<pending>
                                                 // ]
-    for(let i = 1 ;i<concurrent ; i++){
+    for(let i = 0 ;i<concurrent ; i++){
         users.push(virtualUser(url,duration,results))
     }
     await Promise.all(users) // wait till all promises gets resolved/rejected in users array
     return results
 }
 
+function collectMetrices(results : testResult[]){
+
+    const totalRequest : number = results.length;
+    let successRequest : number = 0;
+    let failedRequest : number = 0;
+    let latency : number [] = []
+    for(let i= 0 ; i<totalRequest; i++){
+        if(results[i]!.success === true)
+            successRequest++;
+        else
+            failedRequest++;
+        latency.push(results[i]!.latency)
+    }
+}
+
 const url : string = "https://blazedemo.com/" 
-const results = await loadInitiator(url, 5 , 5)
+const results : testResult[] = await loadInitiator(url, 5 , 2)
+collectMetrices(results)
 console.log(results)
+
 
