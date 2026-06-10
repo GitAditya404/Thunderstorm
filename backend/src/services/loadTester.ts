@@ -56,7 +56,7 @@ async function loadInitiator(url : string ,  concurrent : number , duration : nu
     return results
 }
 
-function collectMetrices(results : testResult[]){
+function collectMetrices(results : testResult[] , duration : number){
 
     const totalRequest : number = results.length;
     let successRequest : number = 0;
@@ -69,11 +69,24 @@ function collectMetrices(results : testResult[]){
             failedRequest++;
         latency.push(results[i]!.latency)
     }
+
+    const avgLatency = latency.reduce((a,b) => {
+        return a+b;
+    })/totalRequest;
+
+    const maxLatency = Math.max(...latency) //...means -> Take every element from the array and pass them individually.
+    const minLatency = Math.min(...latency)
+    const requestsPerSecond = totalRequest/duration;
+    return {
+        totalRequest,successRequest,failedRequest,avgLatency, maxLatency , minLatency, requestsPerSecond
+    }
 }
 
 const url : string = "https://blazedemo.com/" 
-const results : testResult[] = await loadInitiator(url, 5 , 2)
-collectMetrices(results)
-console.log(results)
+const duration : number = 2 ;
+const concurrent : number = 100 ; 
+const results : testResult[] = await loadInitiator(url, concurrent , duration)
+const data = collectMetrices(results , duration)
+console.log(data)
 
 
