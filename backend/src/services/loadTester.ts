@@ -3,8 +3,13 @@
 // }
 import axios from "axios"
 
-let promises = []
-async function makeRequest(url : string ){
+interface testResult {
+    success : boolean;
+    latency : number;
+}
+
+async function makeRequest(url : string ) : Promise<testResult> {
+
     const start = performance.now()
     try{
         const response = await axios.get(url)
@@ -21,12 +26,40 @@ async function makeRequest(url : string ){
     }
 }
 
-for(let i = 0 ; i<100000 ; i++)
-{
-  promises.push( makeRequest("https://blazedemo.com/"))
-  console.log(i)
+async function virtualUser (url : string ,   duration : number, results : testResult[]) : Promise<void> {
+
+    const endTime : number = Date.now() + duration * 1000 ; 
+
+    while (Date.now() < endTime){
+
+         const result = await makeRequest(url) //  request -> wait -> request -> wait    until time complete
+         results.push(result)
+    }
+
+
 }
 
+async function loadInitiator(url : string ,  concurrent : number , duration : number)  {
 
-const result = await Promise.all(promises)
-console.log(result)
+    const results : testResult [] = []  // it stores completed request results(Promise fulfilled) 
+                                            //     [
+                                            //   { success: true, latency: 120 },
+                                            //   { success: true, latency: 150 },
+                                            //   { success: false, latency: 500 }
+                                            // ]
+    const users : Promise<void>[] = []
+                                            //  [
+                                                //   Promise<pending>,
+                                                //   Promise<pending>
+                                                // ]
+    for(let i = 1 ;i<concurrent ; i++){
+        users.push(virtualUser(url,duration,results))
+    }
+    await Promise.all(users) // wait till all promises gets resolved/rejected in users array
+    return results
+}
+
+const url : string = "https://blazedemo.com/" 
+const results = await loadInitiator(url, 5 , 5)
+console.log(results)
+
