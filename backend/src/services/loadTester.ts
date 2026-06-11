@@ -5,6 +5,12 @@ interface testResult {
     latency : number;
 }
 
+const liveData = {
+    total : 0,
+    success : 0,
+    failure : 0
+}
+
 async function makeRequest(url : string ) : Promise<testResult> {
 
     const start = performance.now()
@@ -29,11 +35,18 @@ async function virtualUser (url : string ,   duration : number, results : testRe
 
     while (Date.now() < endTime){
 
-         const result = await makeRequest(url) //  request -> wait -> request -> wait    until time complete
-         results.push(result)
+         const response = await makeRequest(url) //  request -> wait -> request -> wait    until time complete
+         results.push(response)
+
+         if(response){
+            liveData.total++;
+            if(response.success===true)
+                liveData.success++;
+            else
+                liveData.failure++;
+         }
+
     }
-
-
 }
 
 async function loadInitiator(url : string ,  concurrent : number , duration : number)  {
@@ -85,7 +98,13 @@ function collectMetrices(results : testResult[] , duration : number){
 const url : string = "https://blazedemo.com/" 
 const duration : number = 2 ;
 const concurrent : number = 100 ; 
+
+const intervalId = setInterval(() => {
+            console.log(liveData)
+         },1000)
 const results : testResult[] = await loadInitiator(url, concurrent , duration)
+clearInterval(intervalId)
+
 const data = collectMetrices(results , duration)
 console.log(data)
 
