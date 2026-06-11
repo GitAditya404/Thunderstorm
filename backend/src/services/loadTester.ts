@@ -1,4 +1,15 @@
 import axios from "axios"
+import express from 'express'
+import cors from 'cors'
+import { WebSocketServer } from "ws"
+
+const app = express()
+app.use(express.json())
+app.use(cors())
+
+const httpServer = app.listen(8080)
+
+const wss = new WebSocketServer({server : httpServer})  // attaching websocket server to same http server
 
 interface testResult {
     success : boolean;
@@ -102,10 +113,14 @@ const concurrent : number = 100 ;
 const intervalId = setInterval(() => {
             console.log(liveData)
          },1000)
+         
 const results : testResult[] = await loadInitiator(url, concurrent , duration)
 clearInterval(intervalId)
 
 const data = collectMetrices(results , duration)
 console.log(data)
 
-
+//WEBSOCKET
+wss.on("connection",() => {
+    
+})
