@@ -9,13 +9,12 @@ app.use(cors())
 const httpServer = app.listen(8080)
 
 const wss = new WebSocketServer({server : httpServer})  // attaching websocket server to same http server
-
 interface testResult {
     success : boolean;
     latency : number;
 }
 
-let intervalId : NodeJS.Timeout;
+// let intervalId : NodeJS.Timeout;
 
 const liveData = {
     total : 0,
@@ -110,8 +109,8 @@ function collectMetrices(results : testResult[] , duration : number){
 async function sendStats(url : string , concurrent : number , duration : number){
     const results : testResult[] = await loadInitiator(url, concurrent , duration)
     console.log(results)
-    clearInterval(intervalId)
     // const data = collectMetrices(results , duration)
+    console.log(liveData)
 }
 
 
@@ -119,7 +118,7 @@ async function sendStats(url : string , concurrent : number , duration : number)
 wss.on("connection",(socket) => {
     console.log("user Connected")
 
-    socket.on("message",(msg) => {
+    socket.on("message",async (msg) => {
         const parsedMsg = JSON.parse(msg.toString())
         // console.log(parsedMsg)
         if(parsedMsg.type == "sendStats"){
@@ -127,16 +126,23 @@ wss.on("connection",(socket) => {
             const url : string = parsedMsg.payload.url 
             const concurrent : number = Number(parsedMsg.payload.concurrent) 
             const duration : number = Number(parsedMsg.payload.duration)
-
-            sendStats(url , concurrent , duration)
-            console.log(url,concurrent,duration)
-
-             intervalId = setInterval(() => {
+            
+            const intervalId = setInterval(() => {
+                console.log("sending", liveData.total)
                 socket.send(JSON.stringify({
                     type: "stats",
                     payload : liveData
                 }))
             },1000)
+
+            await sendStats(url , concurrent , duration)
+
+            socket.send(JSON.stringify({
+                type: "stats",
+                payload : liveData 
+            }))
+
+            clearInterval(intervalId)
             
         }
     })
