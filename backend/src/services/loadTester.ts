@@ -91,14 +91,8 @@ async function loadInitiator(url : string ,
 function collectMetrices(results : testResult[] , duration : number){
 
     const totalRequest : number = results.length;
-    let successRequest : number = 0;
-    let failedRequest : number = 0;
     let latency : number [] = []
     for(let i= 0 ; i<totalRequest; i++){
-        if(results[i]!.success === true)
-            successRequest++;
-        else
-            failedRequest++;
         latency.push(results[i]!.latency)
     }
 
@@ -110,7 +104,10 @@ function collectMetrices(results : testResult[] , duration : number){
     const minLatency = Math.min(...latency)
     const requestsPerSecond = totalRequest/duration;
     return {
-        totalRequest,successRequest,failedRequest,avgLatency, maxLatency , minLatency, requestsPerSecond
+        avgLatency,
+        maxLatency ,
+        minLatency,
+        requestsPerSecond
     }
 }
 
