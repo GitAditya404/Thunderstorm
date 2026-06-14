@@ -1,32 +1,23 @@
 import axios from "axios"
-import express from 'express'
-import cors from 'cors'
-import { WebSocketServer } from "ws"
-
-const app = express()
-app.use(express.json())
-app.use(cors())
-const httpServer = app.listen(8080)
-
-const wss = new WebSocketServer({server : httpServer})  // attaching websocket server to same http server
 interface testResult {
     success : boolean;
     latency : number;
 }
 
 // let intervalId : NodeJS.Timeout;
-
-const liveData = {
-    total : 0,
-    success : 0,
-    failure : 0
+interface LiveDataInterface {
+    total : 0;
+    success : 0;
+    failure : 0;
 }
+
+type statsCallback = (stats : LiveDataInterface) => void ;
 
 async function makeRequest(url : string ) : Promise<testResult> {
 
     const start = performance.now()
     try{
-        const response = await axios.get(url)
+        await axios.get(url)
         return {
             success : true,
             latency : performance.now() - start
@@ -40,7 +31,12 @@ async function makeRequest(url : string ) : Promise<testResult> {
     }
 }
 
-async function virtualUser (url : string ,   duration : number, results : testResult[]) : Promise<void> {
+async function virtualUser (url : string,
+    duration : number,
+    results : testResult[],
+    liveData : LiveDataInterface,
+    onUpdate : statsCallback
+)  {
 
     const endTime : number = Date.now() + duration * 1000 ; 
 
@@ -49,18 +45,25 @@ async function virtualUser (url : string ,   duration : number, results : testRe
          const response = await makeRequest(url) //  request -> wait -> request -> wait    until time complete
          results.push(response)
 
-         if(response){
-            liveData.total++;
-            if(response.success===true)
+        liveData.total++;
+         
+        if(response.success===true)
                 liveData.success++;
-            else
+         else
                 liveData.failure++;
-         }
+
+        onUpdate({...liveData}) // ...livedata means sending real copy so that if i change lateststats in websocket in future then , it will not affect liveData ; b/c spread operator creates different object in memory ; onUpdate(liveData) -> if you do this then both lateststats and liveData will point to the same object in memory 
+         
 
     }
 }
 
-async function loadInitiator(url : string ,  concurrent : number , duration : number)  {
+async function loadInitiator(url : string ,
+    concurrent : number ,
+    duration : number,
+    liveData : LiveDataInterface,
+    onUpdate : statsCallback
+)  {
 
     const results : testResult [] = []  // it stores completed request results(Promise fulfilled) 
                                             //     [
@@ -74,8 +77,13 @@ async function loadInitiator(url : string ,  concurrent : number , duration : nu
                                                 //   Promise<pending>
                                                 // ]
     for(let i = 0 ;i<concurrent ; i++){
-        users.push(virtualUser(url,duration,results))
+        users.push(virtualUser(url,
+            duration,
+            results,
+            liveData ,
+            onUpdate))
     }
+
     await Promise.all(users) // wait till all promises gets resolved/rejected in users array
     return results
 }
@@ -106,44 +114,31 @@ function collectMetrices(results : testResult[] , duration : number){
     }
 }
 
-async function sendStats(url : string , concurrent : number , duration : number){
-    const results : testResult[] = await loadInitiator(url, concurrent , duration)
+export async function sendStats(url : string ,
+    concurrent : number ,
+    duration : number,
+    onUpdate : statsCallback
+){
+
+    const liveData : LiveDataInterface = {  // u cant make liveData global variable b/c then client A liveData will mix up with client B data
+        total : 0,
+        success : 0,
+        failure : 0
+    }
+
+    const results : testResult[] = await loadInitiator(url,
+        concurrent ,
+        duration,
+        liveData,
+        onUpdate
+    )
+    
     console.log(results)
     // const data = collectMetrices(results , duration)
     console.log(liveData)
+
+    return collectMetrices(results,duration)
 }
 
 
-//WEBSOCKET
-wss.on("connection",(socket) => {
-    console.log("user Connected")
 
-    socket.on("message",async (msg) => {
-        const parsedMsg = JSON.parse(msg.toString())
-        // console.log(parsedMsg)
-        if(parsedMsg.type == "sendStats"){
-
-            const url : string = parsedMsg.payload.url 
-            const concurrent : number = Number(parsedMsg.payload.concurrent) 
-            const duration : number = Number(parsedMsg.payload.duration)
-            
-            const intervalId = setInterval(() => {
-                console.log("sending", liveData.total)
-                socket.send(JSON.stringify({
-                    type: "stats",
-                    payload : liveData
-                }))
-            },1000)
-
-            await sendStats(url , concurrent , duration)
-
-            socket.send(JSON.stringify({
-                type: "stats",
-                payload : liveData 
-            }))
-
-            clearInterval(intervalId)
-            
-        }
-    })
-})
