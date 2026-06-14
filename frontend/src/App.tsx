@@ -9,11 +9,21 @@ function App() {
     failure : number ;
   }
 
+  interface finalStatsInterface {
+    avgLatency : number;
+    maxLatency : number ;  
+    minLatency : number; 
+    requestsPerSecond : number 
+
+  }
+
   const [data,setData] = useState<liveData>({
     total : 0,
     success : 0, 
     failure : 0
   })
+
+  const [finalData, setFinalData] = useState<finalStatsInterface | null> (null)  // it means either it will be of type finalstatsinterface or it will be null
 
   const [url ,setUrl] = useState("")
   const [concurrent , setConcurrent] = useState('')
@@ -41,7 +51,10 @@ function App() {
 
     wsRef.current.onmessage = (event) => {
       const parsedMsg = JSON.parse(event.data)
-      setData(parsedMsg.payload)
+      if(parsedMsg.type === 'liveStats')
+        setData(parsedMsg.payload)
+      if(parsedMsg.type === 'finalStats')
+        setFinalData(parsedMsg.payload)
     }
     
   },[])
@@ -62,10 +75,15 @@ function App() {
       <input 
       onChange={(e) => setDuration(e.target.value)}
       className='border-2' type="number" />
+
       <p>TotalRequest{data.total}</p>
       <p>Success{data.success}</p>
       <p>Failure{data.failure}</p>
-      <button onClick={clickHandler}>Start</button>
+      <p>Average Latency{finalData?.avgLatency || "--" }</p>
+      <p>Max Latency{finalData?.maxLatency || "--"}</p>
+      <p>Min Latency{finalData?.minLatency || "--"}</p>
+      <p>RPS (Request Per Second ) {finalData?.requestsPerSecond || "--"}</p>
+      <button className='border-2 rounded-xl bg-amber-500 p-3' onClick={clickHandler}>Start</button>
 
     </>
   )
