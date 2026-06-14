@@ -9,7 +9,7 @@
   },
   "private": true,
   "scripts": {
-    "dev": "nodemon --exec bun run ./backend/src/services/loadTester.ts"
+    "dev": "nodemon --exec bun run ./backend/src/server.ts"
   },
   "type": "module",
   "dependencies": {
