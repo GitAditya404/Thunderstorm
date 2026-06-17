@@ -17,6 +17,11 @@ function App() {
 
   }
 
+  interface header{
+    name : string ; 
+    value : string ;
+  }
+
   const [data,setData] = useState<liveData>({
     total : 0,
     success : 0, 
@@ -28,7 +33,12 @@ function App() {
   const [url ,setUrl] = useState("")
   const [concurrent , setConcurrent] = useState('')
   const [duration , setDuration] = useState('')
-  
+  const [method, setMethod] = useState('')
+
+  const [header ,setHeader] = useState<header[]>([
+    {name : "" , value : ""}
+  ])
+
   const wsRef = useRef<WebSocket | null>(null)
 
   async function clickHandler(){
@@ -37,9 +47,15 @@ function App() {
       payload : {
         url : url,
         concurrent : concurrent,
-        duration : duration
+        duration : duration,
+        method : method,
+        header : header
       }
     }))
+  }
+
+  function addHeader (){
+    setHeader(prev => [...prev, {name : "" , value : ""}])
   }
 
   useEffect(()=> {
@@ -61,10 +77,26 @@ function App() {
 
   return (
     <>
+
+      <label htmlFor="method">Request</label>
+      <select className='border-2 bg-yellow-200' 
+        value={method}
+        onChange={(e) => setMethod(e.target.value) }
+      >
+
+        <option value="GET">GET</option>
+        <option value="POST">POST</option>
+        <option value="PUT">PUT</option>
+        <option value="PATCH">PATCH</option>
+        <option value="DELETE">DELETE</option>
+
+      </select>
+
       <label htmlFor="">Webpage URL</label>
       <input 
       onChange={(e) => setUrl(e.target.value)}
       className='border-2' type="text" placeholder='url' />
+
 
       <p className=''>Enter No of Concurrent Users</p>
       <input 
@@ -75,6 +107,48 @@ function App() {
       <input 
       onChange={(e) => setDuration(e.target.value)}
       className='border-2' type="number" />
+
+<div className="border-4 p-4">
+
+  {header.map((ele, index) => (
+    <div key={index} className="mb-2">
+
+      <input
+        type="text"
+        placeholder="Header Name"
+        className="border-2 mr-2"
+        value={ele.name}
+        onChange={(e) => {
+          const updatedHeaders = [...header];
+          updatedHeaders[index].name = e.target.value;
+          setHeader(updatedHeaders);
+        }}
+      />
+
+      <input
+        type="text"
+        placeholder="Header Value"
+        className="border-2"
+        value={ele.value}
+        onChange={(e) => {
+          const updatedHeaders = [...header];
+          updatedHeaders[index].value = e.target.value;
+          setHeader(updatedHeaders);
+        }}
+      />
+
+    </div>
+  ))}
+
+  <button
+    className="text-blue-700 font-semibold"
+    onClick={addHeader}
+  >
+    Add New Header
+  </button>
+
+</div>
+
 
       <p>TotalRequest{data.total}</p>
       <p>Success{data.success}</p>
