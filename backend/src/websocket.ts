@@ -12,6 +12,11 @@ interface LiveData{
     failure : number;
 }
 
+interface header {
+    name : string;
+    value : string;
+}
+
 wss.on("connection",(socket) => {
 
         console.log("user Connected")
@@ -24,8 +29,9 @@ wss.on("connection",(socket) => {
                 const url : string = parsedMsg.payload.url 
                 const concurrent : number = Number(parsedMsg.payload.concurrent) 
                 const duration : number = Number(parsedMsg.payload.duration)
+                const method : string = parsedMsg.payload.method
+                const header : header[]  = parsedMsg.payload.header
                 
-
                 let latestStats : LiveData = { 
                     total : 0,
                     success : 0,
@@ -43,6 +49,8 @@ wss.on("connection",(socket) => {
                 const finalMetrics = await sendStats(url,
                     concurrent,
                     duration,
+                    method,
+                    header,
                     (stats ) => {
                         latestStats = stats
                     }
