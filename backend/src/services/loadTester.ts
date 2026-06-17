@@ -11,19 +11,35 @@ interface LiveDataInterface {
     failure : 0;
 }
 
+interface header {
+    name : string;
+    value : string ;
+}
+
 type statsCallback = (stats : LiveDataInterface) => void ;
 
-async function makeRequest(url : string ) : Promise<testResult> {
+async function makeRequest(url : string , method : string , header : header[]) : Promise<testResult> {
+
+    const headerObject : Record<string,string>  = {};
+
+    header.forEach((ele) => {
+        headerObject[ele.name] = ele.value
+    })
 
     const start = performance.now()
     try{
-        await axios.get(url)
+        await axios({
+            url,
+            method,
+            headers: headerObject
+            })
         return {
             success : true,
             latency : performance.now() - start
         }
     }
-    catch(err){
+    catch(err : any){
+        console.log(err.message)
         return {
         success : false,
         latency : performance.now() - start
@@ -34,6 +50,8 @@ async function makeRequest(url : string ) : Promise<testResult> {
 async function virtualUser (url : string,
     duration : number,
     results : testResult[],
+    method : string,
+    header : header [] ,
     liveData : LiveDataInterface,
     onUpdate : statsCallback
 )  {
@@ -42,7 +60,7 @@ async function virtualUser (url : string,
 
     while (Date.now() < endTime){
 
-         const response = await makeRequest(url) //  request -> wait -> request -> wait    until time complete
+         const response = await makeRequest(url,method,header) //  request -> wait -> request -> wait    until time complete
          results.push(response)
 
         liveData.total++;
@@ -61,6 +79,8 @@ async function virtualUser (url : string,
 async function loadInitiator(url : string ,
     concurrent : number ,
     duration : number,
+    method : string,
+    header : header[] ,
     liveData : LiveDataInterface,
     onUpdate : statsCallback
 )  {
@@ -80,6 +100,8 @@ async function loadInitiator(url : string ,
         users.push(virtualUser(url,
             duration,
             results,
+            method,
+            header,
             liveData ,
             onUpdate))
     }
@@ -114,6 +136,8 @@ function collectMetrices(results : testResult[] , duration : number){
 export async function sendStats(url : string ,
     concurrent : number ,
     duration : number,
+    method : string,
+    header : header [] ,
     onUpdate : statsCallback
 ){
 
@@ -126,6 +150,8 @@ export async function sendStats(url : string ,
     const results : testResult[] = await loadInitiator(url,
         concurrent ,
         duration,
+        method,
+        header,
         liveData,
         onUpdate
     )
